@@ -65,7 +65,7 @@
 
   .overlay{position:fixed;inset:0;background:#6b4a5a66;display:none;align-items:center;justify-content:center;z-index:9999;padding:16px}
   .overlay.show{display:flex}
-  .card{background:#fff;border-radius:28px;padding:24px 22px;text-align:center;max-width:380px;width:100%;box-shadow:0 8px 0 #f2cad8;animation:pop .35s cubic-bezier(.3,1.6,.6,1)}
+  .card{max-height:calc(100dvh - 32px);overflow-y:auto;background:#fff;border-radius:28px;padding:24px 22px;text-align:center;max-width:380px;width:100%;box-shadow:0 8px 0 #f2cad8;animation:pop .35s cubic-bezier(.3,1.6,.6,1)}
   .card .big{font-size:60px;line-height:1}
   .card h2{font-weight:400;margin:8px 0 4px;font-size:27px}
   .card p{margin:6px 0 16px;font-size:16px;line-height:1.5}
@@ -73,6 +73,12 @@
   .sizes{display:grid;gap:10px;margin-bottom:14px}
   .sizes button{display:flex;justify-content:space-between;align-items:center;font-size:18px;padding:12px 16px}
   .sizes small{font-size:13px;opacity:.85}
+  .step{font-size:15px;text-align:left;margin:4px 2px 8px;opacity:.8}
+  .ailv{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px}
+  .ailv button{background:#fff;color:var(--ink);box-shadow:0 3px 0 #f2cad8;border:2px solid #f6dbe5;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;font-size:15px;border-radius:14px}
+  .ailv button span{font-size:24px}
+  .ailv button small{font-size:10px;opacity:.7;line-height:1.2}
+  .ailv button.on{background:#fff1a8;border-color:var(--yellow);box-shadow:0 3px 0 #e0b043}
   @keyframes pop{from{transform:scale(.6);opacity:0}}
   #count{position:fixed;inset:0;display:none;align-items:center;justify-content:center;font-size:120px;color:var(--pink-d);z-index:9998;text-shadow:0 6px 0 #fff;pointer-events:none}
   #count.show{display:flex}
@@ -84,7 +90,7 @@
 <body>
 <section class="half" id="aiHalf">
   <div class="bar">
-    <div class="who"><span class="ava" id="aiAva">🤖</span>말랑봇</div>
+    <div class="who"><span class="ava" id="aiAva">🤖</span><span id="aiName">말랑봇</span></div>
     <div class="chip">🀄 <b id="aiLeft">0</b></div>
     <div class="prog"><div id="aiProg"></div></div>
     <button class="ghost" id="btnExit">🏠 나가기</button>
@@ -120,6 +126,17 @@ const SIZES = [
   { lv: 151, label: '🌳 큰 판',   note: '' },
 ];
 SIZES.forEach(s => { if (!s.note) s.note = `타일 ${levelInfo(s.lv).pairs * 2}장`; });
+
+// delay: extra ms before each move, miss: chance of a deliberate wrong pick
+const AI_LEVELS = [
+  { icon: '🐢', name: '느긋', desc: '자주 헷갈려요', delay: 2600, miss: 0.25 },
+  { icon: '🐰', name: '보통', desc: '가끔 실수해요',        delay: 1100, miss: 0.1 },
+  { icon: '🦊', name: '고수', desc: '빠르고 정확',      delay: 300,  miss: 0.03 },
+  { icon: '🐲', name: '최강', desc: '쉬지 않아요',   delay: 0,    miss: 0 },
+];
+let aiLevel = 1;
+try { const v = +localStorage.getItem('mm_ai_level'); if (v >= 0 && v < AI_LEVELS.length && localStorage.getItem('mm_ai_level') !== null) aiLevel = v; } catch {}
+const shuffleArr = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
 
 class Board {
   constructor(el, area, { interactive, onPair, onStuck }) {
@@ -222,10 +239,25 @@ function menu() {
   const card = $('card');
   card.innerHTML = `<div class="big">🤖⚔️🐣</div><h2>AI랑 대결!</h2>
     <p>같은 판을 동시에 풀어요.<br>먼저 다 없애는 쪽이 이겨요!</p>
+    <div class="step">① 말랑봇 실력</div>
+    <div class="ailv">${AI_LEVELS.map((l, i) => `<button data-i="${i}" class="${i === aiLevel ? 'on' : ''}"><span>${l.icon}</span>${l.name}<small>${l.desc}</small></button>`).join('')}</div>
+    <div class="step">② 판 크기 → 바로 시작!</div>
     <div class="sizes">${SIZES.map((s, i) => `<button data-i="${i}" class="${['mint','','sky'][i]}">${s.label}<small>${s.note}</small></button>`).join('')}</div>
     <div class="row"><button class="ghost" onclick="location.href='./'">🏠 홈으로</button></div>`;
   card.querySelectorAll('.sizes button').forEach(b => b.onclick = () => start(SIZES[+b.dataset.i].lv));
+  card.querySelectorAll('.ailv button').forEach(b => b.onclick = () => {
+    aiLevel = +b.dataset.i;
+    try { localStorage.setItem('mm_ai_level', aiLevel); } catch {}
+    card.querySelectorAll('.ailv button').forEach(x => x.classList.toggle('on', x === b));
+    showAiName(); sfx('tap');
+  });
+  showAiName();
   $('overlay').classList.add('show');
+}
+
+function showAiName() {
+  const l = AI_LEVELS[aiLevel];
+  $('aiName').textContent = `말랑봇 · ${l.icon} ${l.name}`;
 }
 
 async function start(lv) {
@@ -252,6 +284,18 @@ async function aiLoop(id) {
     if (!ai.pair()) {
       if (ai.reshuffle()) { say('섞어볼까~ 🌀'); await sleep(600); continue; }
       finish('me', '말랑봇이 더 이상 짝을 못 찾았어요!'); break;
+    }
+    // difficulty: extra "thinking" time and occasional deliberate mistakes
+    const lvl = AI_LEVELS[aiLevel];
+    if (lvl.delay) { await sleep(lvl.delay * (0.7 + Math.random() * 0.6)); if (!playing || id !== matchId) return; }
+    if (Math.random() < lvl.miss) {
+      const wrong = shuffleArr(free.slice()).reduce((acc, t) => acc || (free.find(o => o !== t && o.face !== t.face) ? [t, free.find(o => o !== t && o.face !== t.face)] : null), null);
+      if (wrong) {
+        wrong.forEach(t => t.el.classList.add('sel')); await sleep(450);
+        wrong.forEach(t => { t.el.classList.remove('sel', 'shake'); void t.el.offsetWidth; t.el.classList.add('shake'); });
+        say(['앗 실수! 😵', '어라? 🤔', '이게 아닌가…'][Math.random() * 3 | 0]); await sleep(500);
+        continue;
+      }
     }
     let move;
     try {
@@ -289,12 +333,12 @@ function finish(winner, why = '') {
   const t = fmt(Math.floor((Date.now() - startTs) / 1000));
   if (winner === 'me') {
     confetti(); sfx('win');
-    showCard('🏆', '내가 이겼다!', `${why ? why + '<br>' : ''}기록 ${t} · 말랑봇 남은 타일 ${ai.alive().length}장`,
+    showCard('🏆', '내가 이겼다!', `${why ? why + '<br>' : ''}vs ${AI_LEVELS[aiLevel].icon} ${AI_LEVELS[aiLevel].name} · 기록 ${t}<br>말랑봇 남은 타일 ${ai.alive().length}장`,
       [['🔁 한 판 더', '', menu], ['🏠 홈으로', 'ghost', () => location.href = './']]);
     say('으앙 졌다… 😭');
   } else {
     sfx('no');
-    showCard('🤖', '말랑봇 승리…', `${why ? why + '<br>' : ''}기록 ${t} · 내 남은 타일 ${me.alive().length}장`,
+    showCard('🤖', '말랑봇 승리…', `${why ? why + '<br>' : ''}vs ${AI_LEVELS[aiLevel].icon} ${AI_LEVELS[aiLevel].name} · 기록 ${t}<br>내 남은 타일 ${me.alive().length}장`,
       [['💪 복수하기', '', menu], ['🏠 홈으로', 'ghost', () => location.href = './']]);
     say('내가 이겼지롱 😎');
   }
