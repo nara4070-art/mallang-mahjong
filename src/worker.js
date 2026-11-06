@@ -1,4 +1,4 @@
-import { MAX_LEVEL, levelInfo, computeScore, starsFor } from '../public/levels.js';
+import { MAX_LEVEL, FACES, levelInfo, computeScore, starsFor } from '../public/levels.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -136,7 +136,74 @@ async function api(req, env, url) {
     });
   }
 
+  if (path === '/api/ai-move' && req.method === 'POST') return aiMove(req, env);
+
   return json({ error: 'not_found' }, 404);
+}
+
+// ---------------- AI opponent (OpenRouter) ----------------
+const AI_MODEL = 'openai/gpt-4o';
+const FACE_SET = new Set(FACES);
+
+async function aiMove(req, env) {
+  const ip = req.headers.get('cf-connecting-ip') || 'local';
+  if (env.AI_LIMIT) {
+    const { success } = await env.AI_LIMIT.limit({ key: ip });
+    if (!success) return json({ error: 'rate_limited' }, 429);
+  }
+  const { tiles } = await body(req);
+  if (!Array.isArray(tiles) || tiles.length < 2 || tiles.length > 200) return json({ error: 'bad_board' }, 400);
+  const clean = [];
+  for (const t of tiles) {
+    if (!Number.isInteger(t?.id) || t.id < 0 || t.id > 500 || !FACE_SET.has(t?.f)) return json({ error: 'bad_board' }, 400);
+    clean.push({ id: t.id, f: t.f });
+  }
+
+  // Local testing without a key: pick a matching pair on the server.
+  if (env.AI_MOCK === '1') {
+    await new Promise(r => setTimeout(r, 600));
+    for (let i = 0; i < clean.length; i++) for (let j = i + 1; j < clean.length; j++)
+      if (clean[i].f === clean[j].f) return json({ a: clean[i].id, b: clean[j].id, say: '찾았다! 🤖' });
+    return json({ a: clean[0].id, b: clean[1].id, say: '음…' });
+  }
+
+  if (!env.OPENROUTER_API_KEY) return json({ error: 'no_key' }, 503);
+
+  const list = clean.map(t => `${t.id}:${t.f}`).join(' ');
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${env.OPENROUTER_API_KEY}`,
+      'X-Title': 'Mallang Mahjong',
+    },
+    body: JSON.stringify({
+      model: AI_MODEL,
+      temperature: 0.4,
+      max_tokens: 60,
+      response_format: { type: 'json_object' },
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You are a cute, playful robot racing a human in a mahjong tile-matching game. ' +
+            'You get the currently selectable tiles as "id:emoji". Pick two DIFFERENT ids that show the SAME emoji. ' +
+            'Reply ONLY with JSON: {"a":<id>,"b":<id>,"say":"<very short Korean trash talk or cheer, max 15 chars>"}',
+        },
+        { role: 'user', content: `Selectable tiles: ${list}` },
+      ],
+    }),
+  });
+  if (!res.ok) {
+    console.error('openrouter', res.status, await res.text().catch(() => ''));
+    return json({ error: 'ai_failed', status: res.status }, 502);
+  }
+  const data = await res.json();
+  let move = {};
+  try { move = JSON.parse(data.choices?.[0]?.message?.content || '{}'); } catch {}
+  const a = Number(move.a), b = Number(move.b);
+  const say = typeof move.say === 'string' ? move.say.replace(/[<>]/g, '').slice(0, 20) : '';
+  return json({ a, b, say });
 }
 
 export default {

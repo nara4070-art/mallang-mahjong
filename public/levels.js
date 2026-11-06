@@ -96,3 +96,35 @@ export function starsFor(info, timeLeft) {
 export function computeScore(info, timeLeft) {
   return Math.round((info.pairs * 10 + timeLeft * 3) * info.mult);
 }
+
+// ---- board rules (used by the battle page) ----
+export function isFree(t, set) {
+  let left = false, right = false;
+  for (const o of set) {
+    if (o === t || o.removed) continue;
+    if (o.z === t.z + 1 && Math.abs(o.x - t.x) < 2 && Math.abs(o.y - t.y) < 2) return false;
+    if (o.z === t.z && Math.abs(o.y - t.y) < 2) {
+      if (o.x === t.x - 2) left = true;
+      if (o.x === t.x + 2) right = true;
+    }
+  }
+  return !(left && right);
+}
+
+// Remove random free pairs until empty -> the face assignment always has a solution.
+export function assignSolvable(positions, facePairs, rand = Math.random) {
+  for (let attempt = 0; attempt < 300; attempt++) {
+    const pool = positions.map(p => ({ x: p.x, y: p.y, z: p.z, removed: false, ref: p }));
+    const pairs = shuffle(facePairs.slice(), rand);
+    let ok = true;
+    for (let i = 0; i < pairs.length; i++) {
+      const free = pool.filter(p => !p.removed && isFree(p, pool));
+      if (free.length < 2) { ok = false; break; }
+      shuffle(free, rand);
+      free[0].removed = free[1].removed = true;
+      free[0].ref.face = free[1].ref.face = pairs[i];
+    }
+    if (ok) return true;
+  }
+  return false;
+}

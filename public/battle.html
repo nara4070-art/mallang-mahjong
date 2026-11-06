@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>AI 대결 · 말랑 마작</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#6b4a5a; --pink:#ff8fb3; --pink-d:#e46f96; --mint:#8fdcc2; --sky:#9cc9ff; --yellow:#ffd76e;
+    --tile:#fffaf3; --tile-side:#f3c7d6; --tile-side2:#e7a9bf;
+    --ai1:#e3ecff; --ai2:#eef0ff; --me1:#ffe9f1; --me2:#fff4e6;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%}
+  body{font-family:'Jua',system-ui,sans-serif;color:var(--ink);user-select:none;overflow:hidden;
+    display:flex;flex-direction:column;height:100dvh;background:#fff}
+  .half{flex:1;min-height:0;display:flex;flex-direction:column;position:relative}
+  #aiHalf{background:linear-gradient(160deg,var(--ai1),var(--ai2))}
+  #meHalf{background:linear-gradient(160deg,var(--me1),var(--me2))}
+  .divider{height:6px;background:repeating-linear-gradient(90deg,var(--pink) 0 14px,#fff 14px 28px);flex:0 0 auto;position:relative}
+  .divider span{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;border-radius:999px;padding:2px 12px;font-size:15px;box-shadow:0 2px 0 #f2cad8;white-space:nowrap}
+  .bar{display:flex;align-items:center;gap:8px;padding:8px 12px;flex-wrap:wrap}
+  .who{font-size:20px;display:flex;align-items:center;gap:6px}
+  .who .ava{font-size:28px;display:inline-block}
+  #aiHalf .ava.think{animation:bob .6s ease-in-out infinite}
+  @keyframes bob{50%{transform:translateY(-4px) rotate(-8deg)}}
+  .chip{background:#fff;border-radius:14px;padding:4px 10px;font-size:15px;box-shadow:0 3px 0 #f2cad8;white-space:nowrap}
+  .chip b{font-weight:400;color:var(--pink-d)}
+  .prog{flex:1;min-width:80px;height:12px;background:#fff;border-radius:999px;overflow:hidden;box-shadow:inset 0 2px 0 #f2cad8}
+  .prog div{height:100%;width:0;background:linear-gradient(90deg,var(--mint),#b6efd9);transition:width .3s}
+  #aiHalf .prog div{background:linear-gradient(90deg,var(--sky),#cfe3ff)}
+  .bubble{position:absolute;left:64px;top:44px;background:#fff;border-radius:14px;padding:5px 12px;font-size:15px;box-shadow:0 3px 0 #c9d8f5;z-index:5000;opacity:0;transform:translateY(-6px);transition:.2s;pointer-events:none;max-width:70%}
+  .bubble.show{opacity:1;transform:none}
+  .area{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:4px 10px 10px}
+  .wrap{position:relative}
+  .board{position:absolute;left:0;top:0;transform-origin:0 0}
+  button{font-family:inherit;font-size:15px;color:#fff;border:0;cursor:pointer;padding:6px 12px;border-radius:14px;background:var(--pink);box-shadow:0 3px 0 var(--pink-d)}
+  button:active{transform:translateY(2px);box-shadow:0 1px 0 var(--pink-d)}
+  button.mint{background:var(--mint);box-shadow:0 3px 0 #5fb99b}
+  button.yellow{background:var(--yellow);color:#7a5a1f;box-shadow:0 3px 0 #e0b043}
+  button.sky{background:var(--sky);box-shadow:0 3px 0 #6fa3e0}
+  button.ghost{background:#fff;color:var(--ink);box-shadow:0 3px 0 #f2cad8}
+  button:disabled{opacity:.45;cursor:default}
+  .big-btn{font-size:20px;padding:12px 20px;border-radius:18px}
+
+  .tile{position:absolute;width:60px;height:76px;border-radius:12px;background:var(--tile);
+    box-shadow:4px 5px 0 var(--tile-side),6px 8px 0 var(--tile-side2),7px 10px 8px rgba(160,80,110,.25);
+    display:flex;align-items:center;justify-content:center;font-size:38px;line-height:1;
+    transition:transform .12s, filter .12s, opacity .25s;border:2px solid #fff}
+  .tile::after{content:"";position:absolute;inset:3px 6px auto 6px;height:14px;border-radius:10px;background:linear-gradient(#ffffffd0,#fff0);pointer-events:none}
+  .me .tile{cursor:pointer}
+  .tile.blocked{filter:brightness(.9) saturate(.8);cursor:default}
+  .me .tile.free:hover{transform:translateY(-3px)}
+  .tile.sel{background:#fff1a8;border-color:var(--yellow);transform:translateY(-5px)}
+  .ai .tile.sel{background:#dbe8ff;border-color:var(--sky)}
+  .tile.sel span{display:inline-block;animation:wiggle .4s ease-in-out infinite}
+  .tile.hint{background:#d9fff1;border-color:var(--mint);animation:pulse .6s ease-in-out 3}
+  .tile.gone{opacity:0;transform:scale(.4) rotate(12deg);pointer-events:none}
+  .tile.shake{animation:shake .3s}
+  @keyframes wiggle{25%{transform:rotate(-10deg)}75%{transform:rotate(10deg)}}
+  @keyframes pulse{50%{transform:translateY(-6px) scale(1.06)}}
+  @keyframes shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+
+  .overlay{position:fixed;inset:0;background:#6b4a5a66;display:none;align-items:center;justify-content:center;z-index:9999;padding:16px}
+  .overlay.show{display:flex}
+  .card{background:#fff;border-radius:28px;padding:24px 22px;text-align:center;max-width:380px;width:100%;box-shadow:0 8px 0 #f2cad8;animation:pop .35s cubic-bezier(.3,1.6,.6,1)}
+  .card .big{font-size:60px;line-height:1}
+  .card h2{font-weight:400;margin:8px 0 4px;font-size:27px}
+  .card p{margin:6px 0 16px;font-size:16px;line-height:1.5}
+  .card .row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+  .sizes{display:grid;gap:10px;margin-bottom:14px}
+  .sizes button{display:flex;justify-content:space-between;align-items:center;font-size:18px;padding:12px 16px}
+  .sizes small{font-size:13px;opacity:.85}
+  @keyframes pop{from{transform:scale(.6);opacity:0}}
+  #count{position:fixed;inset:0;display:none;align-items:center;justify-content:center;font-size:120px;color:var(--pink-d);z-index:9998;text-shadow:0 6px 0 #fff;pointer-events:none}
+  #count.show{display:flex}
+  #count span{animation:pop .5s}
+  .confetti{position:fixed;top:-30px;font-size:24px;z-index:10000;pointer-events:none;animation:fall linear forwards}
+  @keyframes fall{to{transform:translateY(110vh) rotate(540deg)}}
+</style>
+</head>
+<body>
+<section class="half" id="aiHalf">
+  <div class="bar">
+    <div class="who"><span class="ava" id="aiAva">🤖</span>말랑봇</div>
+    <div class="chip">🀄 <b id="aiLeft">0</b></div>
+    <div class="prog"><div id="aiProg"></div></div>
+    <button class="ghost" id="btnExit">🏠 나가기</button>
+  </div>
+  <div class="bubble" id="aiSay"></div>
+  <div class="area" id="aiArea"><div class="wrap"><div class="board ai" id="aiBoard"></div></div></div>
+</section>
+<div class="divider"><span id="clock">⏱ 0:00</span></div>
+<section class="half" id="meHalf">
+  <div class="bar">
+    <div class="who"><span class="ava">🐣</span>나</div>
+    <div class="chip">🀄 <b id="meLeft">0</b></div>
+    <div class="prog"><div id="meProg"></div></div>
+    <button class="mint" id="btnHint">💡 힌트</button>
+    <button class="yellow" id="btnShuffle">🌀 <span id="shufLeft">3</span></button>
+  </div>
+  <div class="area" id="meArea"><div class="wrap"><div class="board me" id="meBoard"></div></div></div>
+</section>
+
+<div id="count"></div>
+<div class="overlay show" id="overlay"><div class="card" id="card"></div></div>
+
+<script type="module">
+import { levelInfo, buildLayout, levelFaces, rng, isFree, assignSolvable } from './levels.js';
+
+const TW = 60, TH = 76, DX = 7, DY = 11;
+const $ = id => document.getElementById(id);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+const SIZES = [
+  { lv: 1,   label: '🌱 작은 판', note: '타일 24장' },
+  { lv: 61,  label: '🌷 중간 판', note: '' },
+  { lv: 151, label: '🌳 큰 판',   note: '' },
+];
+SIZES.forEach(s => { if (!s.note) s.note = `타일 ${levelInfo(s.lv).pairs * 2}장`; });
+
+class Board {
+  constructor(el, area, { interactive, onPair, onStuck }) {
+    this.el = el; this.area = area; this.wrap = el.parentElement;
+    this.interactive = interactive; this.onPair = onPair; this.onStuck = onStuck;
+    this.tiles = []; this.selected = null; this.shuffles = 3;
+  }
+  load(layout, faces, seed) {
+    this.tiles = layout.map(([x, y, z], i) => ({ id: i, x, y, z, face: null, removed: false, el: null }));
+    assignSolvable(this.tiles, faces, rng(seed));
+    this.selected = null; this.shuffles = 3; this.total = this.tiles.length;
+    this.render();
+  }
+  alive() { return this.tiles.filter(t => !t.removed); }
+  free() { return this.alive().filter(t => isFree(t, this.tiles)); }
+  pair() {
+    const f = this.free();
+    for (let i = 0; i < f.length; i++) for (let j = i + 1; j < f.length; j++) if (f[i].face === f[j].face) return [f[i], f[j]];
+    return null;
+  }
+  render() {
+    const T = this.tiles, el = this.el; el.innerHTML = '';
+    const minX = Math.min(...T.map(t => t.x)), minY = Math.min(...T.map(t => t.y));
+    const maxX = Math.max(...T.map(t => t.x)), maxY = Math.max(...T.map(t => t.y));
+    const maxZ = Math.max(...T.map(t => t.z));
+    this.w = (maxX - minX) / 2 * TW + TW + 12 + maxZ * DX; this.h = (maxY - minY) / 2 * TH + TH + 14 + maxZ * DY;
+    el.style.width = this.w + 'px'; el.style.height = this.h + 'px';
+    for (const t of T) {
+      const d = document.createElement('div'); d.className = 'tile';
+      d.innerHTML = `<span>${t.face}</span>`;
+      d.style.left = ((t.x - minX) / 2 * TW - t.z * DX + maxZ * DX) + 'px';
+      d.style.top = ((t.y - minY) / 2 * TH - t.z * DY + maxZ * DY) + 'px';
+      d.style.zIndex = t.z * 1000 + t.y * 20 + (t.x + 10);
+      if (this.interactive) d.addEventListener('click', () => this.click(t));
+      t.el = d; el.appendChild(d);
+    }
+    this.refresh(); this.fit();
+  }
+  fit() {
+    if (!this.w) return;
+    const r = this.area.getBoundingClientRect();
+    const s = Math.min((r.width - 20) / this.w, (r.height - 14) / this.h, 1.1);
+    this.el.style.transform = `scale(${s})`;
+    this.wrap.style.width = this.w * s + 'px'; this.wrap.style.height = this.h * s + 'px';
+  }
+  refresh() {
+    for (const t of this.tiles) {
+      if (t.removed) { t.el.classList.add('gone'); continue; }
+      const f = isFree(t, this.tiles);
+      t.el.classList.toggle('free', f); t.el.classList.toggle('blocked', !f);
+    }
+  }
+  remove(a, b) {
+    a.removed = b.removed = true;
+    a.el.classList.remove('sel', 'hint'); b.el.classList.remove('sel', 'hint');
+    this.refresh(); this.onPair(this);
+    if (this.alive().length && !this.pair()) this.onStuck(this);
+  }
+  reshuffle() {
+    if (this.shuffles <= 0) return false;
+    const rest = this.alive(), faces = rest.map(t => t.face).sort(), pairs = [];
+    for (let i = 0; i < faces.length; i += 2) pairs.push(faces[i]);
+    if (!assignSolvable(rest, pairs, Math.random)) return false;
+    this.shuffles--;
+    rest.forEach(t => { t.el.querySelector('span').textContent = t.face; t.el.classList.remove('sel', 'hint');
+      t.el.animate([{ transform: 'rotateY(90deg)' }, { transform: 'none' }], { duration: 300 }); });
+    this.selected = null; this.refresh();
+    return true;
+  }
+  click(t) {
+    if (!playing || t.removed) return;
+    if (!isFree(t, this.tiles)) { t.el.classList.remove('shake'); void t.el.offsetWidth; t.el.classList.add('shake'); sfx('no'); return; }
+    this.tiles.forEach(x => x.el.classList.remove('hint'));
+    if (this.selected === t) { t.el.classList.remove('sel'); this.selected = null; return; }
+    if (this.selected && this.selected.face === t.face) { const a = this.selected; this.selected = null; sfx('ok'); this.remove(a, t); return; }
+    if (this.selected) this.selected.el.classList.remove('sel');
+    this.selected = t; t.el.classList.add('sel'); sfx('tap');
+  }
+}
+
+let playing = false, matchId = 0, startTs = 0, clockId = null;
+const me = new Board($('meBoard'), $('meArea'), { interactive: true, onPair: progress, onStuck: stuck });
+const ai = new Board($('aiBoard'), $('aiArea'), { interactive: false, onPair: progress, onStuck: stuck });
+
+function progress(b) {
+  const left = b.alive().length, pct = (1 - left / b.total) * 100;
+  if (b === me) { $('meLeft').textContent = left; $('meProg').style.width = pct + '%'; $('shufLeft').textContent = me.shuffles; $('btnShuffle').disabled = me.shuffles <= 0; }
+  else { $('aiLeft').textContent = left; $('aiProg').style.width = pct + '%'; }
+  if (playing && left === 0) finish(b === me ? 'me' : 'ai');
+}
+function stuck(b) {
+  if (!playing) return;
+  if (b === ai) return; // the AI loop handles its own shuffles
+  if (me.shuffles > 0) toast('짝이 없어요! 🌀 섞기를 눌러요');
+  else finish('ai', '섞기를 다 써서 더 이상 짝이 없어요 🥺');
+}
+
+function menu() {
+  playing = false; matchId++;
+  const card = $('card');
+  card.innerHTML = `<div class="big">🤖⚔️🐣</div><h2>AI랑 대결!</h2>
+    <p>같은 판을 동시에 풀어요.<br>먼저 다 없애는 쪽이 이겨요!</p>
+    <div class="sizes">${SIZES.map((s, i) => `<button data-i="${i}" class="${['mint','','sky'][i]}">${s.label}<small>${s.note}</small></button>`).join('')}</div>
+    <div class="row"><button class="ghost" onclick="location.href='./'">🏠 홈으로</button></div>`;
+  card.querySelectorAll('.sizes button').forEach(b => b.onclick = () => start(SIZES[+b.dataset.i].lv));
+  $('overlay').classList.add('show');
+}
+
+async function start(lv) {
+  $('overlay').classList.remove('show');
+  const info = levelInfo(lv), layout = buildLayout(info), faces = levelFaces(info);
+  const seed = (Math.random() * 1e9) | 0;
+  me.load(layout, faces, seed); ai.load(layout, faces, seed); // identical boards
+  progress(me); progress(ai);
+  $('aiAva').classList.remove('think'); say('');
+  const id = ++matchId;
+  const c = $('count');
+  for (const n of ['3', '2', '1', 'GO!']) { c.innerHTML = `<span>${n}</span>`; c.classList.add('show'); sfx('tap'); await sleep(650); if (id !== matchId) return; }
+  c.classList.remove('show');
+  playing = true; startTs = Date.now();
+  clearInterval(clockId); clockId = setInterval(clock, 250); clock();
+  aiLoop(id);
+}
+
+async function aiLoop(id) {
+  let errors = 0;
+  $('aiAva').classList.add('think');
+  while (playing && id === matchId) {
+    const free = ai.free();
+    if (!ai.pair()) {
+      if (ai.reshuffle()) { say('섞어볼까~ 🌀'); await sleep(600); continue; }
+      finish('me', '말랑봇이 더 이상 짝을 못 찾았어요!'); break;
+    }
+    let move;
+    try {
+      const res = await fetch('/api/ai-move', { method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ tiles: free.map(t => ({ id: t.id, f: t.face })) }) });
+      move = await res.json();
+      if (!res.ok) throw Object.assign(new Error(move.error), { code: move.error });
+      errors = 0;
+    } catch (e) {
+      if (id !== matchId) return;
+      if (e.code === 'no_key') { aiDown('AI 키가 아직 설정되지 않았어요.<br>관리자가 키를 넣으면 대결할 수 있어요!'); return; }
+      if (++errors >= 5) { aiDown('AI가 응답하지 않아요 😵<br>잠시 후 다시 해 주세요.'); return; }
+      say('끄응… 📡'); await sleep(1200); continue;
+    }
+    if (!playing || id !== matchId) return;
+    const a = ai.tiles[move.a], b = ai.tiles[move.b];
+    const ok = a && b && a !== b && !a.removed && !b.removed && a.face === b.face && isFree(a, ai.tiles) && isFree(b, ai.tiles);
+    if (move.say) say(move.say);
+    if (!ok) { say('앗, 헷갈렸다! 😵'); await sleep(500); continue; }
+    a.el.classList.add('sel'); b.el.classList.add('sel');
+    await sleep(280);
+    if (!playing || id !== matchId) return;
+    ai.remove(a, b);
+  }
+}
+
+function aiDown(msg) {
+  playing = false; clearInterval(clockId); $('aiAva').classList.remove('think');
+  showCard('🔌', '대결할 수 없어요', msg, [['다시 시도', '', () => menu()], ['🏠 홈으로', 'ghost', () => location.href = './']]);
+}
+
+function finish(winner, why = '') {
+  if (!playing) return;
+  playing = false; clearInterval(clockId); $('aiAva').classList.remove('think');
+  const t = fmt(Math.floor((Date.now() - startTs) / 1000));
+  if (winner === 'me') {
+    confetti(); sfx('win');
+    showCard('🏆', '내가 이겼다!', `${why ? why + '<br>' : ''}기록 ${t} · 말랑봇 남은 타일 ${ai.alive().length}장`,
+      [['🔁 한 판 더', '', menu], ['🏠 홈으로', 'ghost', () => location.href = './']]);
+    say('으앙 졌다… 😭');
+  } else {
+    sfx('no');
+    showCard('🤖', '말랑봇 승리…', `${why ? why + '<br>' : ''}기록 ${t} · 내 남은 타일 ${me.alive().length}장`,
+      [['💪 복수하기', '', menu], ['🏠 홈으로', 'ghost', () => location.href = './']]);
+    say('내가 이겼지롱 😎');
+  }
+}
+
+function showCard(big, title, text, btns) {
+  const card = $('card');
+  card.innerHTML = `<div class="big">${big}</div><h2>${title}</h2><p>${text}</p><div class="row"></div>`;
+  const row = card.querySelector('.row');
+  btns.forEach(([l, c, fn]) => { const b = document.createElement('button'); b.textContent = l; if (c) b.className = c; b.onclick = fn; row.appendChild(b); });
+  $('overlay').classList.add('show');
+}
+
+let sayT;
+function say(text) {
+  const el = $('aiSay'); el.textContent = text; el.classList.toggle('show', !!text);
+  clearTimeout(sayT); if (text) sayT = setTimeout(() => el.classList.remove('show'), 1800);
+}
+let toastT;
+function toast(text) {
+  let el = $('toast');
+  if (!el) { el = document.createElement('div'); el.id = 'toast'; el.style.cssText = 'position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#fff;padding:8px 16px;border-radius:999px;box-shadow:0 3px 0 #f2cad8;font-size:16px;z-index:9997;transition:opacity .2s;white-space:nowrap'; document.body.appendChild(el); }
+  el.textContent = text; el.style.opacity = 1; clearTimeout(toastT); toastT = setTimeout(() => el.style.opacity = 0, 1800);
+}
+function clock() { $('clock').textContent = '⏱ ' + fmt(Math.floor((Date.now() - startTs) / 1000)); }
+function fmt(s) { return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }
+function confetti() {
+  const set = ['🌸', '💖', '⭐', '🐾', '🎀', '✨', '🍓'];
+  for (let i = 0; i < 40; i++) { const c = document.createElement('div'); c.className = 'confetti';
+    c.textContent = set[Math.random() * set.length | 0]; c.style.left = Math.random() * 100 + 'vw';
+    c.style.animationDuration = (2 + Math.random() * 2.5) + 's'; c.style.animationDelay = Math.random() * .8 + 's';
+    document.body.appendChild(c); setTimeout(() => c.remove(), 5500); }
+}
+let ac; function sfx(type) {
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    const notes = { tap: [660], ok: [784, 1047], no: [220], win: [784, 988, 1175, 1568] }[type];
+    notes.forEach((f, i) => { const o = ac.createOscillator(), g = ac.createGain(); o.type = 'sine'; o.frequency.value = f;
+      const t = ac.currentTime + i * 0.09; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.12, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+      o.connect(g).connect(ac.destination); o.start(t); o.stop(t + 0.2); });
+  } catch (e) {}
+}
+
+$('btnHint').onclick = () => {
+  if (!playing) return;
+  me.tiles.forEach(t => t.el.classList.remove('hint'));
+  const p = me.pair(); if (p) p.forEach(t => t.el.classList.add('hint'));
+};
+$('btnShuffle').onclick = () => { if (playing && me.reshuffle()) { progress(me); sfx('tap'); } };
+$('btnExit').onclick = () => { if (!playing || confirm('대결을 그만둘까요?')) menu(); };
+window.addEventListener('resize', () => { me.fit(); ai.fit(); });
+window.__battle = { me, ai, get playing() { return playing; } };
+menu();
+</script>
+</body>
+</html>
