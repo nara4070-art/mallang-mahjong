@@ -1,0 +1,604 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>말랑 마작</title>
+<meta name="description" content="귀여운 동물 타일을 짝맞춰 없애는 마작 퍼즐 게임 · 500 레벨">
+<meta property="og:title" content="말랑 마작 🐾">
+<meta property="og:description" content="귀여운 동물 타일 짝맞추기! 500 레벨에 도전해요~">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐾</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg1:#ffe9f1; --bg2:#e7f3ff;
+    --ink:#6b4a5a; --pink:#ff8fb3; --pink-d:#e46f96;
+    --mint:#8fdcc2; --sky:#9cc9ff; --yellow:#ffd76e;
+    --hard:#ffad6b; --hard-d:#e5874a; --vh:#b68cff; --vh-d:#8e63dd;
+    --tile:#fffaf3; --tile-side:#f3c7d6; --tile-side2:#e7a9bf;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;min-height:100%}
+  body{
+    font-family:'Jua',system-ui,sans-serif;color:var(--ink);
+    background:
+      radial-gradient(circle at 15% 20%, #fff6 0 60px, transparent 61px),
+      radial-gradient(circle at 85% 75%, #fff6 0 90px, transparent 91px),
+      linear-gradient(160deg,var(--bg1),var(--bg2));
+    background-attachment:fixed;min-height:100vh;
+    display:flex;flex-direction:column;align-items:center;overflow-x:hidden;user-select:none;
+  }
+  .hidden{display:none !important}
+  header{width:100%;max-width:1000px;padding:14px 16px 6px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px}
+  h1{margin:0;font-size:30px;font-weight:400;letter-spacing:1px;display:flex;align-items:center;gap:8px;cursor:pointer}
+  h1 .paw{display:inline-block;animation:bob 1.8s ease-in-out infinite}
+  @keyframes bob{50%{transform:translateY(-4px) rotate(-8deg)}}
+  .chip{background:#fff;border-radius:16px;padding:6px 12px;font-size:16px;box-shadow:0 3px 0 #f2cad8;text-align:center;white-space:nowrap}
+  .chip b{font-weight:400;color:var(--pink-d)}
+  .me{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .me .chip.name{cursor:pointer}
+  button{
+    font-family:inherit;font-size:17px;color:#fff;border:0;cursor:pointer;
+    padding:9px 16px;border-radius:16px;background:var(--pink);
+    box-shadow:0 4px 0 var(--pink-d);transition:transform .08s, box-shadow .08s;
+  }
+  button:active{transform:translateY(3px);box-shadow:0 1px 0 var(--pink-d)}
+  button.mint{background:var(--mint);box-shadow:0 4px 0 #5fb99b}
+  button.sky{background:var(--sky);box-shadow:0 4px 0 #6fa3e0}
+  button.yellow{background:var(--yellow);color:#7a5a1f;box-shadow:0 4px 0 #e0b043}
+  button.ghost{background:#fff;color:var(--ink);box-shadow:0 4px 0 #f2cad8}
+  button:disabled{opacity:.45;cursor:default}
+  main{width:100%;max-width:1000px;padding:0 16px 24px}
+
+  /* ---------- home ---------- */
+  .hero{background:#fff;border-radius:28px;padding:20px;box-shadow:0 6px 0 #f2cad8;display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between;margin:8px 0 18px}
+  .hero .big{font-size:22px}
+  .hero .big b{font-weight:400;color:var(--pink-d);font-size:30px}
+  .hero .sub{font-size:15px;opacity:.75;margin-top:4px}
+  .hero .acts{display:flex;gap:10px;flex-wrap:wrap}
+  .hero .acts .go{font-size:22px;padding:12px 22px}
+  .pages{display:flex;gap:6px;overflow-x:auto;padding:4px 2px 10px;scrollbar-width:none}
+  .pages button{font-size:14px;padding:6px 10px;border-radius:12px;flex:0 0 auto}
+  .pages button:not(.on){background:#fff;color:var(--ink);box-shadow:0 3px 0 #f2cad8}
+  .legend{display:flex;gap:12px;font-size:14px;margin:0 2px 10px;flex-wrap:wrap;opacity:.85}
+  .legend i{display:inline-block;width:12px;height:12px;border-radius:4px;margin-right:4px;vertical-align:-1px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:10px}
+  .lv{position:relative;aspect-ratio:1;border-radius:18px;background:#fff;box-shadow:0 4px 0 #f2cad8;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:transform .1s}
+  .lv:hover{transform:translateY(-2px)}
+  .lv .n{font-size:20px}
+  .lv .s{font-size:11px;letter-spacing:-1px;height:13px}
+  .lv .tag{position:absolute;top:-6px;right:-4px;font-size:15px}
+  .lv.hard{background:#fff1e4;box-shadow:0 4px 0 #f5c59c}
+  .lv.veryhard{background:#f1e8ff;box-shadow:0 4px 0 #cfb6f5}
+  .lv.cur{background:var(--pink);color:#fff;box-shadow:0 4px 0 var(--pink-d);animation:pulse2 1.4s ease-in-out infinite}
+  .lv.locked{opacity:.45;cursor:default;filter:grayscale(.4)}
+  .lv.locked:hover{transform:none}
+  @keyframes pulse2{50%{transform:scale(1.06)}}
+
+  /* ---------- game ---------- */
+  .gbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:4px 0 10px}
+  .badge{border-radius:14px;padding:6px 12px;font-size:17px;color:#fff;background:var(--mint);box-shadow:0 3px 0 #5fb99b}
+  .badge.hard{background:var(--hard);box-shadow:0 3px 0 var(--hard-d)}
+  .badge.veryhard{background:var(--vh);box-shadow:0 3px 0 var(--vh-d)}
+  .timebox{flex:1;min-width:180px;display:flex;align-items:center;gap:8px}
+  .tbar{flex:1;height:18px;background:#fff;border-radius:999px;box-shadow:inset 0 2px 0 #f2cad8;overflow:hidden}
+  .tbar div{height:100%;width:100%;background:linear-gradient(90deg,var(--mint),#b6efd9);border-radius:999px;transition:width .2s linear}
+  .tbar.warn div{background:linear-gradient(90deg,var(--yellow),#ffe7a6)}
+  .tbar.danger div{background:linear-gradient(90deg,#ff7b9c,#ffb0c4)}
+  #time{min-width:52px;font-size:20px}
+  #time.danger{color:#e2456f;animation:beat .5s ease-in-out infinite}
+  @keyframes beat{50%{transform:scale(1.15)}}
+  .toolbar{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:8px}
+  #stage{width:100%;display:flex;justify-content:center;padding:6px 0 10px;position:relative}
+  #boardWrap{position:relative}
+  #board{position:absolute;left:0;top:0;transform-origin:0 0}
+  #pauseCover{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:28px;background:#ffffffcc;border-radius:24px;z-index:9000;backdrop-filter:blur(6px)}
+  .tile{
+    position:absolute;width:60px;height:76px;border-radius:12px;background:var(--tile);
+    box-shadow:4px 5px 0 var(--tile-side),6px 8px 0 var(--tile-side2),7px 10px 8px rgba(160,80,110,.25);
+    display:flex;align-items:center;justify-content:center;font-size:38px;line-height:1;cursor:pointer;
+    transition:transform .12s, filter .12s, opacity .25s;border:2px solid #fff;
+  }
+  .tile::after{content:"";position:absolute;inset:3px 6px auto 6px;height:14px;border-radius:10px;background:linear-gradient(#ffffffd0,#fff0);pointer-events:none}
+  .tile .face{filter:drop-shadow(0 2px 0 #0001);transition:filter .2s, opacity .2s}
+  .tile.free{box-shadow:4px 5px 0 var(--tile-side),6px 8px 0 var(--tile-side2),9px 14px 12px rgba(160,80,110,.35)}
+  .tile.blocked{filter:brightness(.9) saturate(.8);cursor:default}
+  .fog .tile.blocked .face{filter:blur(7px);opacity:.55}
+  .tile.free:hover{transform:translateY(-3px)}
+  .tile.sel{background:#fff1a8;border-color:var(--yellow);transform:translateY(-5px)}
+  .tile.sel .face{animation:wiggle .4s ease-in-out infinite}
+  .tile.hint{background:#d9fff1;border-color:var(--mint);animation:pulse .6s ease-in-out 3}
+  .tile.gone{opacity:0;transform:scale(.4) rotate(12deg);pointer-events:none}
+  .tile.shake{animation:shake .3s}
+  @keyframes wiggle{25%{transform:rotate(-10deg)}75%{transform:rotate(10deg)}}
+  @keyframes pulse{50%{transform:translateY(-6px) scale(1.06)}}
+  @keyframes shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+  .pop{position:absolute;pointer-events:none;font-size:22px;animation:popup .8s ease-out forwards;z-index:8999}
+  @keyframes popup{to{transform:translateY(-50px) scale(1.4);opacity:0}}
+  .minus{position:absolute;right:0;top:-24px;color:#e2456f;font-size:18px;animation:popup 1s ease-out forwards}
+
+  /* ---------- modal / misc ---------- */
+  #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(90px);background:#fff;padding:10px 18px;border-radius:999px;box-shadow:0 4px 0 #f2cad8;font-size:17px;transition:transform .25s;z-index:100003;white-space:nowrap}
+  #toast.show{transform:translateX(-50%) translateY(0)}
+  .modal{position:fixed;inset:0;background:#6b4a5a55;display:none;align-items:center;justify-content:center;z-index:100001;padding:16px}
+  .modal.show{display:flex}
+  .card{background:#fff;border-radius:28px;padding:24px 22px;text-align:center;max-width:380px;width:100%;box-shadow:0 8px 0 #f2cad8;animation:pop .35s cubic-bezier(.3,1.6,.6,1);max-height:90vh;overflow:auto}
+  .card .big{font-size:60px;line-height:1}
+  .card h2{font-weight:400;margin:8px 0 4px;font-size:27px}
+  .card p{margin:6px 0 16px;font-size:17px;line-height:1.5}
+  .card .row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+  .stars{font-size:38px;letter-spacing:4px;margin:4px 0}
+  .stars .off{filter:grayscale(1);opacity:.3}
+  .card input{font-family:inherit;font-size:20px;width:100%;padding:10px 14px;border-radius:14px;border:2px solid #f6c3d4;outline:none;text-align:center;color:var(--ink);margin-bottom:14px}
+  .card input:focus{border-color:var(--pink)}
+  @keyframes pop{from{transform:scale(.6);opacity:0}}
+  .rank{list-style:none;padding:0;margin:0 0 14px;text-align:left}
+  .rank li{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:12px}
+  .rank li:nth-child(odd){background:#fff5f8}
+  .rank li.mine{background:#fff1a8}
+  .rank .no{width:32px;text-align:center;font-size:18px}
+  .rank .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rank .lvv{color:var(--pink-d)}
+  .rank .sc{font-size:13px;opacity:.7;min-width:66px;text-align:right}
+  .myrank{font-size:15px;background:#fff5f8;border-radius:12px;padding:8px;margin-bottom:12px}
+  .confetti{position:fixed;top:-30px;font-size:24px;z-index:100002;pointer-events:none;animation:fall linear forwards}
+  @keyframes fall{to{transform:translateY(110vh) rotate(540deg)}}
+  footer{font-size:13px;opacity:.6;padding:0 0 14px;text-align:center}
+  @media (max-width:560px){h1{font-size:24px}.chip{font-size:14px;padding:5px 9px}button{font-size:15px;padding:8px 12px}.hero .acts .go{font-size:19px}.grid{grid-template-columns:repeat(auto-fill,minmax(54px,1fr));gap:8px}.lv .n{font-size:17px}}
+</style>
+</head>
+<body>
+<header>
+  <h1 id="logo"><span class="paw">🐾</span>말랑 마작</h1>
+  <div class="me">
+    <div class="chip name" id="meName" title="닉네임 바꾸기">🐣 <b>...</b></div>
+    <div class="chip">⭐ <b id="meStars">0</b></div>
+    <div class="chip">🏅 <b id="meRank">-</b></div>
+  </div>
+</header>
+
+<main>
+  <!-- HOME -->
+  <section id="home">
+    <div class="hero">
+      <div>
+        <div class="big">다음 도전 <b id="nextLv">Lv 1</b></div>
+        <div class="sub" id="nextInfo"></div>
+      </div>
+      <div class="acts">
+        <button class="go" id="btnGo">▶ 시작하기</button>
+        <button class="yellow" id="btnRank">🏆 랭킹</button>
+      </div>
+    </div>
+    <div class="legend">
+      <span><i style="background:#fff;box-shadow:0 0 0 1px #f2cad8"></i>보통</span>
+      <span><i style="background:var(--hard)"></i>🔥 어려움</span>
+      <span><i style="background:var(--vh)"></i>💀 매우 어려움 (안개 🌫)</span>
+    </div>
+    <div class="pages" id="pages"></div>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <!-- GAME -->
+  <section id="game" class="hidden">
+    <div class="gbar">
+      <button class="ghost" id="btnExit">← 레벨</button>
+      <div class="badge" id="lvBadge">Lv 1 · 보통</div>
+      <div class="chip">🀄 <b id="left">0</b></div>
+      <div class="timebox">
+        <div class="tbar" id="tbar"><div id="tfill"></div></div>
+        <div id="time">0:00</div>
+      </div>
+    </div>
+    <div class="toolbar">
+      <button id="btnHint" class="mint">💡 힌트 <small>-5초</small></button>
+      <button id="btnUndo" class="sky">↩️ 되돌리기</button>
+      <button id="btnShuffle" class="yellow">🌀 섞기 <small id="shufLeft">3</small></button>
+      <button id="btnPause" class="ghost">⏸ 멈춤</button>
+    </div>
+    <div id="stage">
+      <div id="boardWrap"><div id="board"></div></div>
+      <div id="pauseCover" class="hidden">⏸ 잠깐 쉬는 중… 눌러서 계속</div>
+    </div>
+  </section>
+</main>
+<footer>위나 옆이 막히지 않은 같은 그림 두 개를 눌러 없애요 ♡</footer>
+
+<div id="toast"></div>
+<div class="modal" id="modal"><div class="card" id="mCard"></div></div>
+
+<script type="module">
+import { MAX_LEVEL, KIND_LABEL, levelInfo, buildLayout, levelFaces, starsFor, computeScore, shuffle, rng } from './levels.js';
+
+const TW = 60, TH = 76, DX = 7, DY = 11;
+const PAGE = 50;
+const $ = id => document.getElementById(id);
+const board = $('board'), wrap = $('boardWrap');
+
+// ---------------- player / API ----------------
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v==null ? d : JSON.parse(v); }catch{ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} },
+};
+let me = store.get('mm_profile', { name:'', maxLevel:0, totalScore:0, totalStars:0, rank:null, levels:{} });
+let token = store.get('mm_token', null);
+
+async function api(path, opts={}){
+  const res = await fetch(path, { headers:{'content-type':'application/json'}, ...opts,
+    body: opts.body ? JSON.stringify(opts.body) : undefined });
+  const data = await res.json().catch(()=>({}));
+  if (!res.ok) throw Object.assign(new Error(data.error || 'error'), { status:res.status, data });
+  return data;
+}
+function saveMe(){ store.set('mm_profile', me); renderMe(); }
+
+async function boot(){
+  renderMe(); renderHome();
+  if (!token){ askName(true); return; }
+  try {
+    const p = await api('/api/me?token=' + encodeURIComponent(token));
+    me = { ...me, ...p }; saveMe(); renderHome();
+  } catch (e) {
+    if (e.status === 404){ token=null; store.set('mm_token', null); askName(true); }
+    else toast('오프라인이에요 · 기록은 나중에 저장돼요');
+  }
+}
+
+function askName(first){
+  const card = $('mCard');
+  card.innerHTML = `
+    <div class="big">${first ? '🐣' : '✏️'}</div>
+    <h2>${first ? '반가워요!' : '닉네임 바꾸기'}</h2>
+    <p>${first ? '랭킹에 표시될 닉네임을 정해 주세요' : '새 닉네임을 입력해 주세요'}</p>
+    <input id="nameIn" maxlength="12" placeholder="말랑이" autocomplete="off">
+    <div class="row"><button id="nameOk">좋아요!</button>${first ? '' : '<button class="ghost" id="nameCancel">취소</button>'}</div>`;
+  const inp = $('nameIn'); inp.value = me.name || '';
+  openModal(); setTimeout(()=>inp.focus(), 50);
+  const submit = async () => {
+    const name = inp.value.trim();
+    if (!name){ inp.focus(); return; }
+    $('nameOk').disabled = true;
+    try {
+      if (!token){
+        const p = await api('/api/register', { method:'POST', body:{ name } });
+        token = p.token; store.set('mm_token', token);
+        me = { ...me, ...p }; delete me.token;
+      } else {
+        const r = await api('/api/rename', { method:'POST', body:{ token, name } });
+        me.name = r.name;
+      }
+      saveMe(); renderHome(); closeModal(); toast(`🐾 ${me.name}님 환영해요!`);
+    } catch (e) { $('nameOk').disabled = false; toast(e.data?.error || '저장에 실패했어요 😢'); }
+  };
+  $('nameOk').onclick = submit;
+  inp.onkeydown = e => { if (e.key === 'Enter') submit(); };
+  if (!first) $('nameCancel').onclick = closeModal;
+}
+
+function renderMe(){
+  $('meName').innerHTML = `🐣 <b></b>`; $('meName').querySelector('b').textContent = me.name || '닉네임';
+  $('meStars').textContent = me.totalStars || 0;
+  $('meRank').textContent = me.rank ? me.rank + '위' : '-';
+}
+
+// ---------------- home ----------------
+let page = 0;
+function renderHome(){
+  const next = Math.min(MAX_LEVEL, (me.maxLevel||0) + 1);
+  const info = levelInfo(next);
+  $('nextLv').textContent = 'Lv ' + next;
+  $('nextInfo').textContent = `${KIND_LABEL[info.kind]} · 타일 ${info.pairs*2}장 · 제한 ${fmt(info.timeLimit)}` + (info.fog ? ' · 안개 🌫' : '');
+  $('btnGo').textContent = (me.maxLevel >= MAX_LEVEL) ? '🏆 전부 클리어!' : '▶ 시작하기';
+  if (!renderHome.paged){ page = Math.floor((next-1)/PAGE); renderHome.paged = true; }
+  const pages = $('pages'); pages.innerHTML='';
+  for (let i=0;i<MAX_LEVEL/PAGE;i++){
+    const b=document.createElement('button'); b.textContent=`${i*PAGE+1}~${(i+1)*PAGE}`;
+    if(i===page) b.className='on'; b.onclick=()=>{page=i;renderHome();}; pages.appendChild(b);
+  }
+  const grid=$('grid'); grid.innerHTML='';
+  for (let lv=page*PAGE+1; lv<=(page+1)*PAGE; lv++){
+    const inf = levelInfo(lv), rec = me.levels?.[lv];
+    const locked = lv > next;
+    const el=document.createElement('div');
+    el.className = `lv ${inf.kind}` + (locked?' locked':'') + (lv===next && !rec ? ' cur':'');
+    const st = rec ? '⭐'.repeat(rec.stars) + '☆'.repeat(3-rec.stars) : '';
+    el.innerHTML = `<div class="n">${locked?'🔒':lv}</div><div class="s">${st}</div>` +
+      (inf.kind==='hard' ? '<div class="tag">🔥</div>' : inf.kind==='veryhard' ? '<div class="tag">💀</div>' : '');
+    if (!locked) el.onclick = () => startLevel(lv);
+    grid.appendChild(el);
+  }
+}
+
+// ---------------- game state ----------------
+let tiles=[], selected=null, history=[], info=null, finished=true;
+let remainMs=0, running=false, lastTs=0, timerId=null, shufflesLeft=0;
+
+const overlapsY = (a,b) => Math.abs(a.y-b.y) < 2;
+const overlapsXY = (a,b) => Math.abs(a.x-b.x) < 2 && Math.abs(a.y-b.y) < 2;
+function isFree(t, set){
+  let left=false, right=false;
+  for (const o of set){
+    if (o===t || o.removed) continue;
+    if (o.z===t.z+1 && overlapsXY(o,t)) return false;
+    if (o.z===t.z && overlapsY(o,t)){ if (o.x===t.x-2) left=true; if (o.x===t.x+2) right=true; }
+  }
+  return !(left && right);
+}
+const alive = () => tiles.filter(t=>!t.removed);
+
+// remove random free pairs until empty -> guarantees a solution exists
+function assignSolvable(positions, facePairs, rand){
+  for (let attempt=0; attempt<300; attempt++){
+    const pool = positions.map(p=>({x:p.x,y:p.y,z:p.z,removed:false,ref:p}));
+    const pairs = shuffle(facePairs.slice(), rand);
+    let ok = true;
+    for (let i=0;i<pairs.length;i++){
+      const free = pool.filter(p=>!p.removed && isFree(p,pool));
+      if (free.length<2){ ok=false; break; }
+      shuffle(free, rand);
+      free[0].removed = free[1].removed = true;
+      free[0].ref.face = free[1].ref.face = pairs[i];
+    }
+    if (ok) return true;
+  }
+  return false;
+}
+
+function startLevel(lv){
+  closeModal();
+  info = levelInfo(lv);
+  const layout = buildLayout(info);
+  tiles = layout.map(([x,y,z],i)=>({id:i,x,y,z,face:null,removed:false,el:null}));
+  assignSolvable(tiles, levelFaces(info), rng(lv*31337+1));
+  selected=null; history=[]; finished=false; shufflesLeft=info.shuffles;
+  $('home').classList.add('hidden'); $('game').classList.remove('hidden');
+  const badge=$('lvBadge'); badge.className='badge '+info.kind;
+  badge.textContent = `Lv ${lv} · ${KIND_LABEL[info.kind]}` + (info.kind==='hard'?' 🔥':info.kind==='veryhard'?' 💀':'');
+  board.classList.toggle('fog', info.fog);
+  render();
+  remainMs = info.timeLimit*1000; setPaused(false);
+  clearInterval(timerId); lastTs=performance.now(); timerId=setInterval(tick,100); tick();
+  window.scrollTo({top:0});
+  if (info.fog && lv===20) toast('🌫 안개 레벨! 막힌 타일은 흐리게 보여요');
+}
+
+function exitToHome(){
+  finished=true; running=false; clearInterval(timerId);
+  $('game').classList.add('hidden'); $('home').classList.remove('hidden');
+  renderHome(); closeModal();
+}
+
+function render(){
+  board.innerHTML='';
+  const minX=Math.min(...tiles.map(t=>t.x)), minY=Math.min(...tiles.map(t=>t.y));
+  const maxX=Math.max(...tiles.map(t=>t.x)), maxY=Math.max(...tiles.map(t=>t.y));
+  const maxZ=Math.max(...tiles.map(t=>t.z));
+  const w=(maxX-minX)/2*TW+TW+12+maxZ*DX, h=(maxY-minY)/2*TH+TH+14+maxZ*DY;
+  board.style.width=w+'px'; board.style.height=h+'px'; board.dataset.w=w; board.dataset.h=h;
+  for (const t of tiles){
+    const el=document.createElement('div'); el.className='tile';
+    el.innerHTML=`<span class="face">${t.face}</span>`;
+    el.style.left=((t.x-minX)/2*TW - t.z*DX + maxZ*DX)+'px';
+    el.style.top=((t.y-minY)/2*TH - t.z*DY + maxZ*DY)+'px';
+    el.style.zIndex=t.z*1000 + t.y*20 + (t.x+10);
+    el.addEventListener('click',()=>onTile(t));
+    t.el=el; board.appendChild(el);
+  }
+  refresh(); fit();
+}
+
+function refresh(){
+  for (const t of tiles){
+    if (t.removed){ t.el.classList.add('gone'); continue; }
+    t.el.classList.remove('gone');
+    const f=isFree(t,tiles); t.el.classList.toggle('free',f); t.el.classList.toggle('blocked',!f);
+  }
+  $('left').textContent = alive().length;
+  $('btnUndo').disabled = !history.length || finished;
+  $('shufLeft').textContent = shufflesLeft;
+  $('btnShuffle').disabled = shufflesLeft<=0 || finished;
+}
+
+function freePairs(){
+  const free=alive().filter(t=>isFree(t,tiles));
+  for (let i=0;i<free.length;i++) for (let j=i+1;j<free.length;j++) if (free[i].face===free[j].face) return [free[i],free[j]];
+  return null;
+}
+
+function onTile(t){
+  if (finished || !running || t.removed) return;
+  if (!isFree(t,tiles)){ t.el.classList.remove('shake'); void t.el.offsetWidth; t.el.classList.add('shake'); sfx('no'); return; }
+  clearHints();
+  if (selected===t){ t.el.classList.remove('sel'); selected=null; return; }
+  if (selected && selected.face===t.face){
+    const a=selected; a.el.classList.remove('sel'); selected=null;
+    a.removed=t.removed=true; history.push([a,t]);
+    popAt(a); popAt(t); sfx('ok'); refresh(); checkEnd(); return;
+  }
+  if (selected) selected.el.classList.remove('sel');
+  selected=t; t.el.classList.add('sel'); sfx('tap');
+}
+
+function popAt(t){
+  const p=document.createElement('div'); p.className='pop';
+  p.textContent=['💖','✨','💕','⭐','🌟'][Math.random()*5|0];
+  p.style.left=(parseFloat(t.el.style.left)+18)+'px'; p.style.top=(parseFloat(t.el.style.top)+10)+'px';
+  board.appendChild(p); setTimeout(()=>p.remove(),800);
+}
+
+async function checkEnd(){
+  if (alive().length===0){ return win(); }
+  if (!freePairs()){
+    if (shufflesLeft>0){ toast('짝이 없어요! 🌀 섞기를 눌러 보세요'); }
+    else lose('더 이상 짝이 없어요', '섞기도 다 썼어요… 다시 도전해 볼까요?', '🥺');
+  }
+}
+
+async function win(){
+  tick(); finished=true; running=false; clearInterval(timerId);
+  const lv=info.lv, timeLeft=Math.floor(remainMs/1000);
+  const stars=starsFor(info,timeLeft), score=computeScore(info,timeLeft);
+  confetti(); sfx('win');
+  // optimistic local update
+  const prev=me.levels[lv];
+  me.levels[lv]={ score:Math.max(score,prev?.score||0), stars:Math.max(stars,prev?.stars||0) };
+  me.maxLevel=Math.max(me.maxLevel||0, lv);
+  saveMe();
+  const card=$('mCard');
+  card.innerHTML=`
+    <div class="big">${info.kind==='veryhard'?'👑':info.kind==='hard'?'🔥':'🎉'}</div>
+    <h2>Lv ${lv} 클리어!</h2>
+    <div class="stars">${[1,2,3].map(i=>`<span class="${i<=stars?'':'off'}">⭐</span>`).join('')}</div>
+    <p>남은 시간 ${fmt(timeLeft)} · 점수 <b>${score.toLocaleString()}</b><br><span id="saveMsg" style="font-size:14px;opacity:.7">기록 저장 중…</span></p>
+    <div class="row">${lv<MAX_LEVEL?'<button id="mNext">다음 레벨 ▶</button>':''}<button class="ghost" id="mRetry">다시 하기</button><button class="ghost" id="mHome">레벨 선택</button></div>`;
+  openModal();
+  if ($('mNext')) $('mNext').onclick=()=>startLevel(lv+1);
+  $('mRetry').onclick=()=>startLevel(lv); $('mHome').onclick=exitToHome;
+  if (!token){ $('saveMsg').textContent='닉네임을 정하면 랭킹에 올라가요'; return; }
+  try{
+    const r=await api('/api/clear',{method:'POST',body:{token,level:lv,timeLeft}});
+    me.maxLevel=r.maxLevel; me.totalScore=r.totalScore; me.totalStars=r.totalStars; me.rank=r.rank;
+    me.levels[lv]={ score:r.best, stars:Math.max(stars,prev?.stars||0) }; saveMe();
+    const msg=$('saveMsg'); if(msg) msg.textContent = (r.newBest?'✨ 최고 기록! · ':'') + `전체 ${r.rank}위 · 총점 ${r.totalScore.toLocaleString()}`;
+  }catch(e){ const msg=$('saveMsg'); if(msg) msg.textContent='기록 저장에 실패했어요 😢'; }
+}
+
+function lose(title, text, icon='⏰'){
+  finished=true; running=false; clearInterval(timerId); sfx('no');
+  const card=$('mCard');
+  card.innerHTML=`<div class="big">${icon}</div><h2>${title}</h2><p>${text}</p>
+    <div class="row"><button id="mRetry">다시 도전 💪</button><button class="ghost" id="mHome">레벨 선택</button></div>`;
+  openModal(); $('mRetry').onclick=()=>startLevel(info.lv); $('mHome').onclick=exitToHome;
+}
+
+function reshuffle(){
+  if (finished || !running || shufflesLeft<=0) return;
+  const rest=alive();
+  const faces=rest.map(t=>t.face).sort();
+  const pairs=[]; for(let i=0;i<faces.length;i+=2) pairs.push(faces[i]);
+  if (!assignSolvable(rest,pairs,Math.random)){ toast('섞기에 실패했어요 😢'); return; }
+  shufflesLeft--;
+  rest.forEach(t=>{ t.el.querySelector('.face').textContent=t.face; t.el.classList.remove('sel');
+    t.el.animate([{transform:'rotateY(90deg)'},{transform:'none'}],{duration:300}); });
+  selected=null; history=[]; refresh(); sfx('tap'); toast(`🌀 섞었어요! (남은 섞기 ${shufflesLeft})`);
+}
+
+function hint(){
+  if (finished || !running) return;
+  clearHints();
+  const p=freePairs();
+  if (!p){ toast('짝이 없어요… 섞어볼까요? 🌀'); return; }
+  p.forEach(t=>t.el.classList.add('hint'));
+  remainMs=Math.max(0,remainMs-5000); minusFx('-5초'); tick();
+}
+function clearHints(){ tiles.forEach(t=>t.el&&t.el.classList.remove('hint')); }
+function minusFx(txt){ const d=document.createElement('div'); d.className='minus'; d.textContent=txt; $('tbar').parentElement.style.position='relative'; $('tbar').parentElement.appendChild(d); setTimeout(()=>d.remove(),1000); }
+
+function undo(){
+  if (!history.length || finished || !running) return;
+  const [a,b]=history.pop(); a.removed=b.removed=false;
+  if (selected){ selected.el.classList.remove('sel'); selected=null; }
+  refresh(); sfx('tap');
+}
+
+function setPaused(p){
+  running=!p; lastTs=performance.now();
+  $('pauseCover').classList.toggle('hidden',!p);
+  $('boardWrap').style.visibility = p ? 'hidden' : '';
+  $('btnPause').textContent = p ? '▶ 계속' : '⏸ 멈춤';
+}
+
+function tick(){
+  const now=performance.now();
+  if (running && !finished) remainMs -= now-lastTs;
+  lastTs=now;
+  if (!info) return;
+  const s=Math.max(0,Math.ceil(remainMs/1000));
+  const ratio=Math.max(0,remainMs/(info.timeLimit*1000));
+  $('time').textContent=fmt(s);
+  $('tfill').style.width=(ratio*100)+'%';
+  $('tbar').className='tbar'+(ratio<.15?' danger':ratio<.35?' warn':'');
+  $('time').classList.toggle('danger', s<=10 && !finished);
+  if (remainMs<=0 && !finished){ remainMs=0; lose('시간 초과!','아깝다~ 조금만 더 빨리! 다시 해 볼까요?'); }
+}
+
+// ---------------- UI helpers ----------------
+function fmt(s){ return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`; }
+function fit(){
+  const w=+board.dataset.w, h=+board.dataset.h; if(!w) return;
+  const availW=Math.min(window.innerWidth-32,1000);
+  const top=$('stage').getBoundingClientRect().top+window.scrollY;
+  const availH=Math.max(window.innerHeight-top-40,260);
+  let s=Math.min(availW/w, availH/h, 1.2);
+  if (window.innerWidth<560) s=Math.min(availW/w,1.2);
+  board.style.transform=`scale(${s})`;
+  wrap.style.width=(w*s)+'px'; wrap.style.height=(h*s)+'px';
+}
+let toastT; function toast(m){ const el=$('toast'); el.textContent=m; el.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove('show'),2000); }
+function openModal(){ $('modal').classList.add('show'); }
+function closeModal(){ $('modal').classList.remove('show'); }
+function confetti(){
+  const set=['🌸','💖','⭐','🐾','🎀','✨','🍓'];
+  for(let i=0;i<40;i++){ const c=document.createElement('div'); c.className='confetti';
+    c.textContent=set[Math.random()*set.length|0]; c.style.left=Math.random()*100+'vw';
+    c.style.animationDuration=(2+Math.random()*2.5)+'s'; c.style.animationDelay=Math.random()*.8+'s';
+    document.body.appendChild(c); setTimeout(()=>c.remove(),5500); }
+}
+
+async function showRanking(){
+  const card=$('mCard');
+  card.innerHTML=`<div class="big">🏆</div><h2>랭킹</h2><p style="font-size:14px;opacity:.7;margin-bottom:10px">높은 레벨 → 총점 순</p><div id="rkBody">불러오는 중…</div>
+    <div class="row"><button id="rkClose">닫기</button></div>`;
+  openModal(); $('rkClose').onclick=closeModal;
+  try{
+    const r=await api('/api/ranking'+(token?'?token='+encodeURIComponent(token):''));
+    const body=$('rkBody'); body.innerHTML='';
+    if (r.me){
+      const d=document.createElement('div'); d.className='myrank';
+      d.textContent=`내 순위 ${r.me.rank}위 · Lv ${r.me.maxLevel} · ${r.me.totalScore.toLocaleString()}점`;
+      body.appendChild(d);
+      me.rank=r.me.rank; saveMe();
+    }
+    const ul=document.createElement('ul'); ul.className='rank';
+    if (!r.top.length){ ul.innerHTML='<li>아직 아무도 없어요! 첫 번째가 되어 보세요 🐣</li>'; }
+    r.top.forEach(p=>{
+      const li=document.createElement('li');
+      if (r.me && p.rank===r.me.rank && p.name===r.me.name) li.className='mine';
+      li.innerHTML=`<span class="no"></span><span class="nm"></span><span class="lvv"></span><span class="sc"></span>`;
+      li.querySelector('.no').textContent = p.rank<=3 ? ['🥇','🥈','🥉'][p.rank-1] : p.rank;
+      li.querySelector('.nm').textContent = p.name;
+      li.querySelector('.lvv').textContent = 'Lv '+p.maxLevel;
+      li.querySelector('.sc').textContent = p.totalScore.toLocaleString()+'점';
+      ul.appendChild(li);
+    });
+    body.appendChild(ul);
+  }catch(e){ $('rkBody').textContent='랭킹을 불러오지 못했어요 😢'; }
+}
+
+// tiny web-audio blips
+let ac; function sfx(type){
+  try{
+    ac=ac||new (window.AudioContext||window.webkitAudioContext)();
+    const notes={tap:[660],ok:[784,1047],no:[220],win:[784,988,1175,1568]}[type];
+    notes.forEach((f,i)=>{ const o=ac.createOscillator(), g=ac.createGain(); o.type='sine'; o.frequency.value=f;
+      const t=ac.currentTime+i*0.09; g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.12,t+0.01); g.gain.exponentialRampToValueAtTime(0.0001,t+0.18);
+      o.connect(g).connect(ac.destination); o.start(t); o.stop(t+0.2); });
+  }catch(e){}
+}
+
+// ---------------- wiring ----------------
+$('btnGo').onclick=()=>startLevel(Math.min(MAX_LEVEL,(me.maxLevel||0)+1));
+$('btnRank').onclick=showRanking;
+$('meName').onclick=()=>askName(!token);
+$('logo').onclick=()=>{ if(!$('game').classList.contains('hidden')){ if(!finished) setPaused(true); exitToHome(); } };
+$('btnExit').onclick=exitToHome;
+$('btnHint').onclick=hint; $('btnUndo').onclick=undo; $('btnShuffle').onclick=reshuffle;
+$('btnPause').onclick=()=>{ if(!finished) setPaused(running); };
+$('pauseCover').onclick=()=>{ if(!finished) setPaused(false); };
+document.addEventListener('visibilitychange',()=>{ if(document.hidden && running && !finished) setPaused(true); });
+window.addEventListener('resize',fit);
+window.__mm={ tiles:()=>tiles, isFree, onTile, startLevel, get remainMs(){return remainMs}, set remainMs(v){remainMs=v} };
+boot();
+</script>
+</body>
+</html>
