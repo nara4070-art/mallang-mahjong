@@ -151,7 +151,8 @@ async function aiMove(req, env) {
     const { success } = await env.AI_LIMIT.limit({ key: ip });
     if (!success) return json({ error: 'rate_limited' }, 429);
   }
-  const { tiles } = await body(req);
+  const { tiles, count: rawCount } = await body(req);
+  const count = Math.max(1, Math.min(5, Number(rawCount) | 0 || 1)); // pairs wanted per call
   if (!Array.isArray(tiles) || tiles.length < 2 || tiles.length > 200) return json({ error: 'bad_board' }, 400);
   const clean = [];
   for (const t of tiles) {
@@ -162,9 +163,11 @@ async function aiMove(req, env) {
   // Local testing without a key: pick a matching pair on the server.
   if (env.AI_MOCK === '1') {
     await new Promise(r => setTimeout(r, 600));
-    for (let i = 0; i < clean.length; i++) for (let j = i + 1; j < clean.length; j++)
-      if (clean[i].f === clean[j].f) return json({ a: clean[i].id, b: clean[j].id, say: '찾았다! 🤖' });
-    return json({ a: clean[0].id, b: clean[1].id, say: '음…' });
+    const used = new Set(), pairs = [];
+    for (let i = 0; i < clean.length && pairs.length < count; i++) for (let j = i + 1; j < clean.length; j++)
+      if (!used.has(i) && !used.has(j) && clean[i].f === clean[j].f) { pairs.push([clean[i].id, clean[j].id]); used.add(i); used.add(j); break; }
+    if (!pairs.length) pairs.push([clean[0].id, clean[1].id]);
+    return json({ pairs, a: pairs[0][0], b: pairs[0][1], say: '찾았다! 🤖' });
   }
 
   if (!env.OPENROUTER_API_KEY) return json({ error: 'no_key' }, 503);
@@ -180,15 +183,16 @@ async function aiMove(req, env) {
     body: JSON.stringify({
       model: AI_MODEL,
       temperature: 0.4,
-      max_tokens: 60,
+      max_tokens: 40 + count * 20,
       response_format: { type: 'json_object' },
       messages: [
         {
           role: 'system',
           content:
             'You are a cute, playful robot racing a human in a mahjong tile-matching game. ' +
-            'You get the currently selectable tiles as "id:emoji". Pick two DIFFERENT ids that show the SAME emoji. ' +
-            'Reply ONLY with JSON: {"a":<id>,"b":<id>,"say":"<very short Korean trash talk or cheer, max 15 chars>"}',
+            'You get the currently selectable tiles as "id:emoji". ' +
+            `Find up to ${count} pairs. Each pair is two DIFFERENT ids showing the SAME emoji; never reuse an id. ` +
+            'Reply ONLY with JSON: {"pairs":[[<id>,<id>],...],"say":"<very short Korean trash talk or cheer, max 15 chars>"}',
         },
         { role: 'user', content: `Selectable tiles: ${list}` },
       ],
@@ -201,9 +205,11 @@ async function aiMove(req, env) {
   const data = await res.json();
   let move = {};
   try { move = JSON.parse(data.choices?.[0]?.message?.content || '{}'); } catch {}
-  const a = Number(move.a), b = Number(move.b);
+  let pairs = Array.isArray(move.pairs) ? move.pairs : [[move.a, move.b]];
+  pairs = pairs.filter(p => Array.isArray(p) && p.length === 2).slice(0, count).map(([a, b]) => [Number(a), Number(b)]);
+  if (!pairs.length) pairs = [[NaN, NaN]];
   const say = typeof move.say === 'string' ? move.say.replace(/[<>]/g, '').slice(0, 20) : '';
-  return json({ a, b, say });
+  return json({ pairs, a: pairs[0][0], b: pairs[0][1], say });
 }
 
 export default {

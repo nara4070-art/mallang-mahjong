@@ -127,12 +127,13 @@ const SIZES = [
 ];
 SIZES.forEach(s => { if (!s.note) s.note = `타일 ${levelInfo(s.lv).pairs * 2}장`; });
 
-// delay: extra ms before each move, miss: chance of a deliberate wrong pick
+// delay: extra ms before each GPT call, miss: chance of a deliberate wrong pick,
+// batch: pairs asked from GPT per call (GPT latency is the bottleneck), anim: ms each pair stays highlighted
 const AI_LEVELS = [
-  { icon: '🐢', name: '느긋', desc: '자주 헷갈려요', delay: 2600, miss: 0.25 },
-  { icon: '🐰', name: '보통', desc: '가끔 실수해요',        delay: 1100, miss: 0.1 },
-  { icon: '🦊', name: '고수', desc: '빠르고 정확',      delay: 300,  miss: 0.03 },
-  { icon: '🐲', name: '최강', desc: '쉬지 않아요',   delay: 0,    miss: 0 },
+  { icon: '🐢', name: '느긋', desc: '자주 헷갈려요', delay: 2600, miss: 0.25, batch: 1, anim: 300 },
+  { icon: '🐰', name: '보통', desc: '가끔 실수해요', delay: 1100, miss: 0.1,  batch: 1, anim: 280 },
+  { icon: '🦊', name: '고수', desc: '빠르고 정확',   delay: 0,    miss: 0,    batch: 2, anim: 220 },
+  { icon: '🐲', name: '최강', desc: '몰아쳐요',      delay: 0,    miss: 0,    batch: 4, anim: 140 },
 ];
 let aiLevel = 1;
 try { const v = +localStorage.getItem('mm_ai_level'); if (v >= 0 && v < AI_LEVELS.length && localStorage.getItem('mm_ai_level') !== null) aiLevel = v; } catch {}
@@ -300,7 +301,7 @@ async function aiLoop(id) {
     let move;
     try {
       const res = await fetch('/api/ai-move', { method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ tiles: free.map(t => ({ id: t.id, f: t.face })) }) });
+        body: JSON.stringify({ tiles: free.map(t => ({ id: t.id, f: t.face })), count: lvl.batch }) });
       move = await res.json();
       if (!res.ok) throw Object.assign(new Error(move.error), { code: move.error });
       errors = 0;
@@ -311,14 +312,21 @@ async function aiLoop(id) {
       say('끄응… 📡'); await sleep(1200); continue;
     }
     if (!playing || id !== matchId) return;
-    const a = ai.tiles[move.a], b = ai.tiles[move.b];
-    const ok = a && b && a !== b && !a.removed && !b.removed && a.face === b.face && isFree(a, ai.tiles) && isFree(b, ai.tiles);
     if (move.say) say(move.say);
-    if (!ok) { say('앗, 헷갈렸다! 😵'); await sleep(500); continue; }
-    a.el.classList.add('sel'); b.el.classList.add('sel');
-    await sleep(280);
-    if (!playing || id !== matchId) return;
-    ai.remove(a, b);
+    const pairs = Array.isArray(move.pairs) ? move.pairs : [[move.a, move.b]];
+    let done = 0;
+    for (const [ia, ib] of pairs) {
+      // each pair must still be legal after the previous ones were removed
+      const a = ai.tiles[ia], b = ai.tiles[ib];
+      const ok = a && b && a !== b && !a.removed && !b.removed && a.face === b.face && isFree(a, ai.tiles) && isFree(b, ai.tiles);
+      if (!ok) continue;
+      a.el.classList.add('sel'); b.el.classList.add('sel');
+      await sleep(lvl.anim);
+      if (!playing || id !== matchId) return;
+      ai.remove(a, b); done++;
+      if (!playing) return;
+    }
+    if (!done) { say('앗, 헷갈렸다! 😵'); await sleep(500); }
   }
 }
 
